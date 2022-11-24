@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
-	"time"
 )
 
 func sayHallo(wg *sync.WaitGroup) {
@@ -455,34 +454,239 @@ func main() {
 		instance4 := mypool.Get()
 		fmt.Println(instance4)
 	*/
-	count := 0
 
-	mypool := &sync.Pool{
-		New: func() interface{} {
-			count++
-			fmt.Println("Creating")
-			return struct{}{}
-		},
-	}
+	//180 pool - 2
+	/*
+		count := 0
 
-	mypool.Put("manualy added:1")
-	mypool.Put("manualy added:2")
+		mypool := &sync.Pool{
+			New: func() interface{} {
+				count++
+				fmt.Println("Creating")
+				return struct{}{}
+			},
+		}
 
-	var wg sync.WaitGroup
+		mypool.Put("manualy added:1")
+		mypool.Put("manualy added:2")
 
-	wg.Add(10000)
+		var wg sync.WaitGroup
 
-	for i := 0; i < 10000; i++ {
-		time.Sleep(1 * time.Millisecond)
+		wg.Add(10000)
 
+		for i := 0; i < 10000; i++ {
+			time.Sleep(1 * time.Millisecond)
+
+			go func() {
+				defer wg.Done()
+				instance := mypool.Get()
+				mypool.Put(instance)
+			}()
+		}
+		wg.Wait()
+
+		fmt.Printf("created instance: %d\n", count)
+	*/
+
+	//182 Map
+	/*
+		//invalid logic
+		var wg sync.WaitGroup
+		m := map[string]int{"A": 0, "B": 1}
+
+		for i := 0; i < 10; i++ {
+			wg.Add(2)
+
+			go func() {
+				defer wg.Done()
+				m["A"] = rand.Intn(100)
+				m["B"] = rand.Intn(100)
+			}()
+		}
+		wg.Wait()
+	*/
+	/*
+		//182 map - smap
+		smap := &sync.Map{}
+		smap.Store("Hello", "World")
+		smap.Store(1, 2)
+
+		smap.Delete(1)
+
+		v, ok := smap.Load("Hello")
+		if ok {
+			fmt.Println(v)
+		}
+
+		smap.LoadOrStore("Hello", "Wooooooooold")
+		smap.LoadOrStore(2, 3)
+
+		smap.Range(func(key, value interface{}) bool {
+			fmt.Println(key, value)
+			return true
+		})
+	*/
+	/*
+		//183 Atomic
+		var count int64
+
+		increment := func() {
+			atomic.AddInt64(&count, 1)
+		}
+
+		increment()
+
+		fmt.Println(count)
+	*/
+
+	//185 channel
+	/*
+		ch := make(chan int)
 		go func() {
-			defer wg.Done()
-			instance := mypool.Get()
-			mypool.Put(instance)
-		}()
-	}
-	wg.Wait()
+			defer close(ch)
 
-	fmt.Printf("created instance: %d\n", count)
+			for i := 0; i < 10; i++ {
+				ch <- i
+			}
+
+		}()
+		for integer := range ch {
+			fmt.Println(integer)
+		}
+	*/
+
+	/*
+		//183 channel close
+		begin := make(chan interface{})
+
+		var wg sync.WaitGroup
+
+		for i := 0; i < 5; i++ {
+			wg.Add(1)
+			fmt.Printf("Start goroutine %d\n", i)
+
+			go func(i int) {
+				defer wg.Done()
+				<-begin
+				fmt.Printf("%d has begin\n", i)
+			}(i)
+		}
+		fmt.Println("unblocking goroutine!")
+		close(begin)
+		wg.Wait()
+	*/
+
+	/*
+		//187 channel buffer
+		ch := make(chan int, 5)
+		go func() {
+			for i := 0; i < 5; i++ {
+				fmt.Printf("Writing to channelk: %v\n", i)
+				ch <- i
+			}
+		}()
+		for integer := range ch {
+			time.Sleep(1 * time.Second)
+			fmt.Printf("reading to channel: %v\n", integer)
+		}
+	*/
+
+	/*
+		//188 channelライフサイクルのカプセル化
+		chanOwner := func() <-chan int {
+			resultStream := make(chan int, 5)
+
+			go func() {
+				defer close(resultStream)
+				for i := 0; i < 5; i++ {
+					resultStream <- i
+				}
+			}()
+			return resultStream
+		}
+
+		resultStream := chanOwner()
+
+		for result := range resultStream {
+			fmt.Printf("Receieved: %v\n", result)
+		}
+
+		fmt.Println("Done")
+	*/
+
+	//191 select for-select & timeout & canncel & default
+	//select
+	/*
+		a := make(chan int)
+		b := make(chan int)
+		close(a)
+
+		select {
+		case <-b:¥
+		case <-a:
+		}
+	*/
+
+	/*
+			start := time.Now()
+			ch1 := make(chan int)
+			ch2 := make(chan int)
+
+			done := make(chan interface{})
+
+			go func() {
+				time.Sleep(2 * time.Second)
+				close(done)
+			}()
+
+			go func() {
+				defer close(ch1)
+				for i := 0; i < 10; i++ {
+					time.Sleep(1 * time.Second)
+					ch1 <- i
+				}
+			}()
+			go func() {
+				defer close(ch2)
+				for i := 0; i < 10; i++ {
+					time.Sleep(1 * time.Second)
+					ch2 <- i
+				}
+			}()
+
+		loop:
+			for {
+				select {
+				case <-done:
+					break loop
+				case <-time.After(1 * time.Second):
+					break loop
+				case v, ok := <-ch1:
+					if !ok {
+						break loop
+					}
+					fmt.Printf("ch1: %v\n", v)
+				case v, ok := <-ch2:
+					if !ok {
+						break loop
+					}
+					fmt.Printf("ch2: %v\n", v)
+				}
+
+			}
+			end := time.Now()
+			fmt.Println(end.Sub(start))
+	*/
+
+	/*
+		//default
+		var ch <-chan int
+		select {
+		case <-ch:
+		default:
+			fmt.Println("Default")
+
+		}
+	*/
 
 }
